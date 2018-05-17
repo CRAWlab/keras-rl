@@ -2,12 +2,12 @@ from __future__ import division
 import warnings
 
 import keras.backend as K
+from keras.models import Model
 from keras.layers import Lambda, Input, Layer, Dense
 
 from rl.core import Agent
 from rl.policy import EpsGreedyQPolicy, GreedyQPolicy
 from rl.util import *
-from rl.keras_future import Model
 
 
 def mean_q(y_true, y_pred):
@@ -87,7 +87,18 @@ class AbstractDQNAgent(Agent):
 # http://arxiv.org/pdf/1312.5602.pdf
 # http://arxiv.org/abs/1509.06461
 class DQNAgent(AbstractDQNAgent):
-    """Write me
+    """
+    # Arguments 
+        model__: A Keras model. 
+        policy__: A Keras-rl policy that are defined in [policy](https://github.com/keras-rl/keras-rl/blob/master/rl/policy.py). 
+        test_policy__: A Keras-rl policy. 
+        enable_double_dqn__: A boolean which enable target network as a second network proposed by van Hasselt et al. to decrease overfitting. 
+        enable_dueling_dqn__: A boolean which enable dueling architecture proposed by Mnih et al. 
+        dueling_type__: If `enable_dueling_dqn` is set to `True`, a type of dueling architecture must be chosen which calculate Q(s,a) from V(s) and A(s,a) differently. Note that `avg` is recommanded in the [paper](https://arxiv.org/abs/1511.06581). 
+            `avg`: Q(s,a;theta) = V(s;theta) + (A(s,a;theta)-Avg_a(A(s,a;theta))) 
+            `max`: Q(s,a;theta) = V(s;theta) + (A(s,a;theta)-max_a(A(s,a;theta))) 
+            `naive`: Q(s,a;theta) = V(s;theta) + A(s,a;theta) 
+ 
     """
     def __init__(self, model, policy=None, test_policy=None, enable_double_dqn=True, enable_dueling_network=False,
                  dueling_type='avg', *args, **kwargs):
@@ -127,7 +138,7 @@ class DQNAgent(AbstractDQNAgent):
             else:
                 assert False, "dueling_type must be one of {'avg','max','naive'}"
 
-            model = Model(input=model.input, output=outputlayer)
+            model = Model(inputs=model.input, outputs=outputlayer)
 
         # Related objects.
         self.model = model
@@ -180,9 +191,9 @@ class DQNAgent(AbstractDQNAgent):
         y_pred = self.model.output
         y_true = Input(name='y_true', shape=(self.nb_actions,))
         mask = Input(name='mask', shape=(self.nb_actions,))
-        loss_out = Lambda(clipped_masked_error, output_shape=(1,), name='loss')([y_pred, y_true, mask])
+        loss_out = Lambda(clipped_masked_error, output_shape=(1,), name='loss')([y_true, y_pred, mask])
         ins = [self.model.input] if type(self.model.input) is not list else self.model.input
-        trainable_model = Model(input=ins + [y_true, mask], output=[loss_out, y_pred])
+        trainable_model = Model(inputs=ins + [y_true, mask], outputs=[loss_out, y_pred])
         assert len(trainable_model.output_names) == 2
         combined_metrics = {trainable_model.output_names[1]: metrics}
         losses = [
@@ -219,8 +230,6 @@ class DQNAgent(AbstractDQNAgent):
             action = self.policy.select_action(q_values=q_values)
         else:
             action = self.test_policy.select_action(q_values=q_values)
-        if self.processor is not None:
-            action = self.processor.process_action(action)
 
         # Book-keeping.
         self.recent_observation = observation
@@ -605,7 +614,7 @@ class NAFAgent(AbstractDQNAgent):
         mu_out = self.mu_model(os_in)
         A_out = NAFLayer(self.nb_actions, mode=self.covariance_mode)([L_out, mu_out, a_in])
         combined_out = Lambda(lambda x: x[0]+x[1], output_shape=lambda x: x[0])([A_out, V_out])
-        combined = Model(input=[a_in] + os_in, output=[combined_out])
+        combined = Model(inputs=[a_in] + os_in, outputs=[combined_out])
         # Compile combined model.
         if self.target_model_update < 1.:
             # We use the `AdditionalUpdatesOptimizer` to efficiently soft-update the target model.
@@ -637,8 +646,6 @@ class NAFAgent(AbstractDQNAgent):
         # Select an action.
         state = self.memory.get_recent_state(observation)
         action = self.select_action(state)
-        if self.processor is not None:
-            action = self.processor.process_action(action)
 
         # Book-keeping.
         self.recent_observation = observation

@@ -16,6 +16,7 @@ if sys.version[0] == '2':
 
 import rl
 import rl.core
+import rl.processors
 import rl.agents
 
 
@@ -27,6 +28,10 @@ PAGES = [
     {
         'page': 'core.md',
         'all_module_classes': [rl.core],
+    },
+    {
+        'page': 'processors.md',
+        'all_module_classes': [rl.processors],
     },
     {
         'page': 'agents/overview.md',
@@ -136,7 +141,7 @@ def class_to_source_link(cls):
     path = module_name.replace('.', '/')
     path += '.py'
     line = inspect.getsourcelines(cls)[-1]
-    link = 'https://github.com/matthiasplappert/keras-rl/blob/master/' + path + '#L' + str(line)
+    link = 'https://github.com/keras-rl/keras-rl/blob/master/' + path + '#L' + str(line)
     return '[[source]](' + link + ')'
 
 
@@ -146,7 +151,7 @@ def function_to_source_link(fn):
     path = module_name.replace('.', '/')
     path += '.py'
     line = inspect.getsourcelines(fn)[-1]
-    link = 'https://github.com/matthiasplappert/keras-rl/blob/master/' + path + '#L' + str(line)
+    link = 'https://github.com/keras-rl/keras-rl/blob/master/' + path + '#L' + str(line)
     return '[[source]](' + link + ')'
 
 
